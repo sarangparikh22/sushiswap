@@ -22,6 +22,7 @@ contract SushiRoll {
     }
 
     function migrateWithPermit(
+        address sender,
         address tokenA,
         address tokenB,
         uint256 liquidity,
@@ -33,13 +34,14 @@ contract SushiRoll {
         bytes32 s
     ) public {
         IUniswapV2Pair pair = IUniswapV2Pair(pairForOldRouter(tokenA, tokenB));
-        pair.permit(msg.sender, address(this), liquidity, deadline, v, r, s);
+        pair.permit(sender, address(this), liquidity, deadline, v, r, s);
 
-        migrate(tokenA, tokenB, liquidity, amountAMin, amountBMin, deadline);
+        migrate(sender, tokenA, tokenB, liquidity, amountAMin, amountBMin, deadline);
     }
 
     // msg.sender should have approved 'liquidity' amount of LP token of 'tokenA' and 'tokenB'
     function migrate(
+        address sender,
         address tokenA,
         address tokenB,
         uint256 liquidity,
@@ -51,6 +53,7 @@ contract SushiRoll {
 
         // Remove liquidity from the old router with permit
         (uint256 amountA, uint256 amountB) = removeLiquidity(
+            sender,
             tokenA,
             tokenB,
             liquidity,
@@ -60,18 +63,19 @@ contract SushiRoll {
         );
 
         // Add liquidity to the new router
-        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidity(tokenA, tokenB, amountA, amountB);
+        (uint256 pooledAmountA, uint256 pooledAmountB) = addLiquidity(sender, tokenA, tokenB, amountA, amountB);
 
         // Send remaining tokens to msg.sender
         if (amountA > pooledAmountA) {
-            IERC20(tokenA).safeTransfer(msg.sender, amountA - pooledAmountA);
+            IERC20(tokenA).safeTransfer(sender, amountA - pooledAmountA);
         }
         if (amountB > pooledAmountB) {
-            IERC20(tokenB).safeTransfer(msg.sender, amountB - pooledAmountB);
+            IERC20(tokenB).safeTransfer(sender, amountB - pooledAmountB);
         }
     }
 
     function removeLiquidity(
+        address sender,
         address tokenA,
         address tokenB,
         uint256 liquidity,
@@ -80,7 +84,7 @@ contract SushiRoll {
         uint256 deadline
     ) internal returns (uint256 amountA, uint256 amountB) {
         IUniswapV2Pair pair = IUniswapV2Pair(pairForOldRouter(tokenA, tokenB));
-        pair.transferFrom(msg.sender, address(pair), liquidity);
+        pair.transferFrom(sender, address(pair), liquidity);
         (uint256 amount0, uint256 amount1) = pair.burn(address(this));
         (address token0,) = UniswapV2Library.sortTokens(tokenA, tokenB);
         (amountA, amountB) = tokenA == token0 ? (amount0, amount1) : (amount1, amount0);
@@ -100,6 +104,7 @@ contract SushiRoll {
     }
 
     function addLiquidity(
+        address sender,
         address tokenA,
         address tokenB,
         uint256 amountADesired,
@@ -109,7 +114,7 @@ contract SushiRoll {
         address pair = UniswapV2Library.pairFor(router.factory(), tokenA, tokenB);
         IERC20(tokenA).safeTransfer(pair, amountA);
         IERC20(tokenB).safeTransfer(pair, amountB);
-        IUniswapV2Pair(pair).mint(msg.sender);
+        IUniswapV2Pair(pair).mint(sender);
     }
 
     function _addLiquidity(
