@@ -39,7 +39,7 @@ contract SushiRoll {
         migrate(sender, tokenA, tokenB, liquidity, amountAMin, amountBMin, deadline);
     }
 
-    // msg.sender should have approved 'liquidity' amount of LP token of 'tokenA' and 'tokenB'
+    // sender should have approved 'liquidity' amount of LP token of 'tokenA' and 'tokenB'
     function migrate(
         address sender,
         address tokenA,
@@ -48,7 +48,7 @@ contract SushiRoll {
         uint256 amountAMin,
         uint256 amountBMin,
         uint256 deadline
-    ) public {
+    ) internal {
         require(deadline >= block.timestamp, 'SushiSwap: EXPIRED');
 
         // Remove liquidity from the old router with permit
